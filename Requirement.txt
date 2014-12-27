@@ -1,0 +1,36 @@
+http://home.snafu.de/tilman/xenulink.html This is what I've been using, but it "runs out of memory" and freezes, its useless. It will crawl a site and grab all the external links on the page, and even search many pages deep within the site for external pages. The idea is to search for domains that may be available for registration. Then I can buy and register it. But instead of just crawling 1 site, it will crawl tons of sites at once, 1-100 threads and finds tons.
+
+
+
+I have a better diea what I need now. I need something to run on autopilot. Ill add my million links to the xenu like bot to crawl them all for "broken links", that might be a error 400, not sure. Then it will auto submit those to the availability checker, so I know for sure they are available. Then it will auto submit to majestic.coms bulk uploader which will check metrics on them all, and hopefully saving them on the fly, appendind them all to a notepad or similar. So I need a crawler and an availability checker built somehow to work together, so everything runs on auto.
+
+
+
+I have a crawler, availability checker and a desktop majestic.com bulk uploader, BUT none of them work together. Too much maintenance and wasted time. So if you need some kinda of reference Ive got them. let me know if it sounds like stuff you wanna do
+
+
+
+If I could have a crawler built, then auto submit the urls to this thing--> https://brainstorm.domains/domain-name-analyzer/ which checks for availability. Then if I could auto submit those availables to this bot--> http://www.wyldesoftware.com/products/bulk-majestic-checker/ , it will check all the avail domains metrics FAST. Its hooked up to majestic.com without an api. hmm, stuff to think about. Im just thinkin out loud.
+
+
+
+semeinoe.com
+is broken links
+"no such host"
+
+Ill have some more later, because not all of those are available, but it prb means most arent hosted, some might be registered but unhosted too tho.
+
+http://prntscr.com/5glxoa this is what I get when I use xenu. I runs and runs, even grabbing 1m links as you can see on the bottom, but then gets an error like this, or out or memory error. Then xenu shuts down, leaving me with no links at all.
+
+Im on today, so if youre on, let me know
+
+NO SUCH HOST
+BROKEN LINKS-->
+
+twinpeaks.co.zw
+zanupfpub.co.zw
+dealgooder.com
+touchbaseafrica.co.uk
+zwnews.com
+fxflare.com
+nationalserviceresources.org

@@ -76,28 +76,79 @@ namespace Broken_Links_Extractor
                     response = (HttpWebResponse)request.GetResponse();
                     StreamReader sr = new StreamReader(response.GetResponseStream());
                     string html = sr.ReadToEnd();
-                    Uri currentUri = new Uri(url);
-                    Regex linkParser = new Regex(@"\b(?:https?://|www\.)\S+\b", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+                    Uri currentUri = new Uri(url.Replace(@"http://www.", @"http://").Replace(@"http://", @"http://www."));
+                    #region Extract Links Using HTMLAgilityPack
+                    HtmlAgilityPack.HtmlDocument doc = new HtmlAgilityPack.HtmlDocument();
+                    
+                    doc.Load(response.GetResponseStream());
+                    HtmlNodeCollection collection = doc.DocumentNode.SelectNodes("//a[@href]");
                     HashSet<string> linkList = new HashSet<string>(); 
-                    foreach(Match m in linkParser.Matches(html))
+                    foreach (HtmlNode node in collection)
                     {
                         Uri muri = null;
-                        lock (outputLock)
+                        Uri.TryCreate(node.GetAttributeValue("href", ""), UriKind.RelativeOrAbsolute, out muri);
+                        if (muri != null)
+                        if (Uri.Compare(muri, currentUri, UriComponents.Host, UriFormat.UriEscaped, StringComparison.CurrentCulture) == 0)
                         {
-                            this.OutputBox.AppendText("Child Link for " + url + ": " + m.Value.ToString() + Environment.NewLine);
-                        }
-                        Uri.TryCreate(m.Value.ToString(),UriKind.RelativeOrAbsolute,out muri);
-                        if(Uri.Compare(muri,currentUri,UriComponents.Host,UriFormat.SafeUnescaped,StringComparison.CurrentCulture) == 0)
-                        {
-                            linkList.Add(m.Value.ToString());
+                            linkList.Add(muri.ToString());
                         }
                     }
-                    for(int i=1;i<=this.depth;i++)
+                    #endregion
+                    #region Extract Links using Regex
+                    //Regex linkParser = new Regex(@"\b(?:https?://|www\.)\S+\b", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+                    //
+                    //foreach(Match m in linkParser.Matches(html))
+                    //{
+                    //    Uri muri = null;
+
+                    //    #region Url Clean Up
+                    //    //Remove any query part
+                    //    int index = m.Value.ToString().IndexOf('?');
+                    //    string temp = m.Value.ToString();
+                    //    if (index != -1)
+                    //        temp = m.Value.ToString().Remove(index);
+
+                    //    //Remove any leftover part starting with "
+                    //    index = temp.IndexOf('"');
+                    //    if(index != -1)
+                    //        temp = temp.Remove(index);
+
+                    //    //Remove any leftover part starting with #
+                    //    index = temp.IndexOf('#');
+                    //    if (index != -1)
+                    //        temp = temp.Remove(index);
+
+                    //    //Remove any leftover part starting with '
+                    //    index = temp.IndexOf('\'');
+                    //    if (index != -1)
+                    //        temp = temp.Remove(index);
+
+                    //    //Remove trailing slashes
+                    //    if (temp[temp.Length - 1] == '/')
+                    //        temp = temp.Substring(0,temp.Length-1);
+
+                    //    #endregion
+                    //    //if (temp != m.Value.ToString())
+                    //    //{
+                    //        lock (outputLock)
+                    //        {
+                    //            this.OutputBox.AppendText(temp + " --> " + temp[temp.Length - 1] + Environment.NewLine);
+                    //        }
+                    //    //}
+                    //    Uri.TryCreate(temp,UriKind.RelativeOrAbsolute,out muri);
+                    //    if(muri!=null)
+                    //    if(Uri.Compare(muri,currentUri,UriComponents.Host,UriFormat.UriEscaped,StringComparison.CurrentCulture) == 0)
+                    //    {
+                    //        linkList.Add(muri.ToString());
+                    //    }
+                    //}
+                    #endregion
+                    for (int i=1;i<=this.depth;i++)
                     {
                         HashSet<string> links_Of_Current_Depth = new HashSet<string>();
                         foreach(string matchedUrls in linkList)
                         {
-                            if(matchedUrls.Replace(@"http\:\/\/","").Replace(@"https\:\/\/","").Split('/').Length - 1 == i )
+                            if(matchedUrls.Replace(@"http://","").Replace(@"https://","").Split('/').Length - 1 == i )
                             {
                                 links_Of_Current_Depth.Add(matchedUrls);
                             }
