@@ -40,18 +40,63 @@ namespace Broken_Links_Extractor
         int runningThreads = 0;
         static private object outputLock = new object();
         static private object ouputFileLock = new object();
+
+        static private object brokenLinksOutputLock = new object();
+
+        StreamWriter brokenLinksSW = new StreamWriter(Directory.GetCurrentDirectory() + "/broken_links.txt",false);
+
+        static private int currentDepth = 0;
         private bool allLinksProcessed = false;
         static private object[] linkFilesLock = null;
         private void Form1_Load(object sender, EventArgs e)
         {
 
         }
+        private static string Remove_Trailing_Slash(string url)
+        {
+            string temp = url;
+            if (temp[temp.Length - 1] == '/')
+                temp = temp.Substring(0, temp.Length - 1);
+            return temp;
+        }
+        private static string Url_Cleanup(string url)
+        {
+            #region Url Clean Up
+            //Remove any query part
+            int index = url.IndexOf('?');
+            string temp = url.ToString();
+            if (index != -1)
+                temp = temp.Remove(index);
 
+            //Remove any leftover part starting with "
+            index = temp.IndexOf('"');
+            if (index != -1)
+                temp = temp.Remove(index);
+
+            //Remove any leftover part starting with #
+            index = temp.IndexOf('#');
+            if (index != -1)
+                temp = temp.Remove(index);
+
+            //Remove any leftover part starting with '
+            index = temp.IndexOf('\'');
+            if (index != -1)
+                temp = temp.Remove(index);
+
+            //Remove trailing slashes
+            if (temp[temp.Length - 1] == '/')
+                temp = temp.Substring(0, temp.Length - 1);
+
+            #endregion
+
+            return temp;
+        }
         private void label1_Click(object sender, EventArgs e)
         {
 
         }
         StreamWriter[] sw = null;
+        
         private void threadMethod()
         {
             for (; ; )
@@ -71,29 +116,35 @@ namespace Broken_Links_Extractor
                 {
                     HttpWebRequest request = (HttpWebRequest)HttpWebRequest.Create(url);
                     request.Proxy = null;
-                    request.Timeout = int.Parse(ConfigurationManager.AppSettings["Timeout_In_Seconds"])*1000;
+                    request.Timeout = int.Parse(ConfigurationManager.AppSettings["Timeout_In_Seconds"]) * 1000;
                     request.Method = "GET";
                     response = (HttpWebResponse)request.GetResponse();
                     StreamReader sr = new StreamReader(response.GetResponseStream());
                     string html = sr.ReadToEnd();
                     Uri currentUri = new Uri(url.Replace(@"http://www.", @"http://").Replace(@"http://", @"http://www."));
+
                     #region Extract Links Using HTMLAgilityPack
                     HtmlAgilityPack.HtmlDocument doc = new HtmlAgilityPack.HtmlDocument();
-                    
-                    doc.Load(response.GetResponseStream());
-                    HtmlNodeCollection collection = doc.DocumentNode.SelectNodes("//a[@href]");
-                    HashSet<string> linkList = new HashSet<string>(); 
-                    foreach (HtmlNode node in collection)
+                    HashSet<string> linkList = null;
+                    doc.LoadHtml(html);
+                    if (doc.DocumentNode.SelectSingleNode("//body") != null)
                     {
-                        Uri muri = null;
-                        Uri.TryCreate(node.GetAttributeValue("href", ""), UriKind.RelativeOrAbsolute, out muri);
-                        if (muri != null)
-                        if (Uri.Compare(muri, currentUri, UriComponents.Host, UriFormat.UriEscaped, StringComparison.CurrentCulture) == 0)
+                        HtmlNodeCollection collection = doc.DocumentNode.SelectNodes("//a[@href]");
+                        linkList = new HashSet<string>();
+                        if(collection != null)
+                        foreach (HtmlNode node in collection)
                         {
-                            linkList.Add(muri.ToString());
+                            Uri muri = null;
+                            Uri.TryCreate(node.GetAttributeValue("href", ""), UriKind.RelativeOrAbsolute, out muri);
+                            if (muri != null)
+                                if (Uri.Compare(muri, currentUri, UriComponents.Host, UriFormat.UriEscaped, StringComparison.CurrentCulture) == 0)
+                                {
+                                    linkList.Add(Url_Cleanup(muri.ToString()));
+                                }
                         }
                     }
                     #endregion
+
                     #region Extract Links using Regex
                     //Regex linkParser = new Regex(@"\b(?:https?://|www\.)\S+\b", RegexOptions.Compiled | RegexOptions.IgnoreCase);
                     //
@@ -143,19 +194,20 @@ namespace Broken_Links_Extractor
                     //    }
                     //}
                     #endregion
-                    for (int i=1;i<=this.depth;i++)
+                    if(linkList != null)
+                    for (int i = 1; i <= this.depth; i++)
                     {
                         HashSet<string> links_Of_Current_Depth = new HashSet<string>();
-                        foreach(string matchedUrls in linkList)
+                        foreach (string matchedUrls in linkList)
                         {
-                            if(matchedUrls.Replace(@"http://","").Replace(@"https://","").Split('/').Length - 1 == i )
+                            if (matchedUrls.Replace(@"http://", "").Replace(@"https://", "").Split('/').Length - 1 == i)
                             {
                                 links_Of_Current_Depth.Add(matchedUrls);
                             }
                         }
-                        lock(linkFilesLock[i])
+                        lock (linkFilesLock[i])
                         {
-                            foreach(string final_Matches in links_Of_Current_Depth)
+                            foreach (string final_Matches in links_Of_Current_Depth)
                             {
                                 sw[i].WriteLine(final_Matches);
                             }
@@ -163,7 +215,7 @@ namespace Broken_Links_Extractor
                     }
                     lock (outputLock)
                     {
-                        this.OutputBox.AppendText(url +" " + Thread.CurrentThread.ManagedThreadId.ToString() + " " + response.StatusDescription + Environment.NewLine);
+                        this.OutputBox.AppendText(url + " " + Thread.CurrentThread.ManagedThreadId.ToString() + " " + response.StatusDescription + Environment.NewLine);
                     }
                 }
                 catch (WebException ex)
@@ -171,6 +223,22 @@ namespace Broken_Links_Extractor
                     lock (outputLock)
                     {
                         this.OutputBox.AppendText(url + " " + Thread.CurrentThread.ManagedThreadId.ToString() + " " + ex.Message + Environment.NewLine);
+                        brokenLinksSW.WriteLine(url);
+                    }
+                }
+                catch (HtmlAgilityPack.HtmlWebException ex)
+                {
+                    lock (outputLock)
+                    {
+                        this.OutputBox.AppendText(url + " " + Thread.CurrentThread.ManagedThreadId.ToString() + " " + ex.Message + Environment.NewLine);
+                        brokenLinksSW.WriteLine(url);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    lock (outputLock)
+                    {
+                        this.OutputBox.AppendText(url + " " + Thread.CurrentThread.ManagedThreadId.ToString() + " " + ex.Message + " " + ex.StackTrace + " " + Environment.NewLine);
                     }
                 }
                 finally
@@ -210,33 +278,34 @@ namespace Broken_Links_Extractor
                 linkFilesLock = new object[this.depth+1];
                 for (int i = 0; i<=this.depth;i++)
                 {//Open File Handles for the different depths
-                    sw[i] = new StreamWriter(Directory.GetCurrentDirectory()+"/links_depth_" + counter_RunTimeFilesAdded + "_" + i + ".txt",false);
+                    sw[i] = new StreamWriter(Directory.GetCurrentDirectory()+"/links_depth_" + counter_RunTimeFilesAdded + "_" + 0 + "_" + i + ".txt",false);
                     linkFilesLock[i] = new object();
                 }
                 #endregion
                 
                 for(int i=0;i<=this.depth;i++)
                 {
+                    currentDepth = i;
                     #region Collect links of depth 0
-                    if(i == 0) // For the first depth, collect links from the various input files
+                    if (i == 0) // For the first depth, collect links from the various input files
                     {
                         HashSet<String> linkSet = new HashSet<string>();
-                        foreach(string file in fileList)
+                        foreach (string file in fileList)
                         {
                             StreamReader sr = null;
                             try
                             {
                                 sr = new StreamReader(file);
-                                while(!sr.EndOfStream)
+                                while (!sr.EndOfStream)
                                 {
                                     string url = sr.ReadLine();
                                     Uri uri = null;
-                                    Uri.TryCreate(url,UriKind.Absolute,out uri);
-                                    if(uri == null)
+                                    Uri.TryCreate(url, UriKind.Absolute, out uri);
+                                    if (uri == null)
                                     {
-                                        lock(outputLock)
+                                        lock (outputLock)
                                         {
-                                            this.OutputBox.AppendText("Invalid URL: "+url + " in file: " + file);
+                                            this.OutputBox.AppendText("Invalid URL: " + url + " in file: " + file);
                                         }
                                     }
                                     else
@@ -245,9 +314,9 @@ namespace Broken_Links_Extractor
                                     }
                                 }
                             }
-                            catch(Exception ex)
+                            catch (Exception ex)
                             {
-                                lock(outputLock)
+                                lock (outputLock)
                                 {
                                     this.OutputBox.AppendText("Error while opening one of the files: " + ex.Message);
                                 }
@@ -258,21 +327,78 @@ namespace Broken_Links_Extractor
                                     sr.Close();
                             }
                         }
-                        foreach(string url in linkSet)
+                        foreach (string url in linkSet)
                         {
                             sw[i].WriteLine(url);
                         }
-                        lock(waitLock)
+                        lock (waitLock)
                         {
-                            foreach(string url in linkSet)
+                            foreach (string url in linkSet)
                             {
                                 urlQueue.Enqueue(url);
                             }
                         }
-                        sw[i].Close();
+                        //sw[i].Close();
                     }//All links of depth 0 written to file
                     #endregion
-                    
+                    else
+                    {
+                        //Close the previous file handles and make new file handles
+                        for (int j = 0; j < this.depth; j++)
+                        {
+                            sw[j].Close();
+                            sw[j] = new StreamWriter(Directory.GetCurrentDirectory() + "/links_depth_" + counter_RunTimeFilesAdded + "_" + i + " " + j + ".txt", false);
+                        }
+                        HashSet<String> linkSet = new HashSet<string>();
+                        StreamReader sr = null;
+                        for(int k=0;k<currentDepth;k++)
+                        {
+                            try
+                            {
+                                sr = new StreamReader(Directory.GetCurrentDirectory()+"/links_depth_"+ counter_RunTimeFilesAdded + "_" + k + "_" + currentDepth + ".txt", false);
+                                while (!sr.EndOfStream)
+                                {
+                                    string url = sr.ReadLine();
+                                    Uri uri = null;
+                                    Uri.TryCreate(url, UriKind.Absolute, out uri);
+                                    if (uri == null)
+                                    {
+                                        lock (outputLock)
+                                        {
+                                            this.OutputBox.AppendText("Invalid URL: " + url + " in file: " + file);
+                                        }
+                                    }
+                                    else
+                                    {
+                                        linkSet.Add(url);
+                                    }
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                lock (outputLock)
+                                {
+                                    this.OutputBox.AppendText("Error while opening one of the files: " + ex.Message);
+                                }
+                            }
+                            finally
+                            {
+                                if (sr != null)
+                                    sr.Close();
+                            }
+                        }
+                        lock (waitLock)
+                        {
+                            foreach (string url in linkSet)
+                            {
+                                urlQueue.Enqueue(url);
+                            }
+                        }
+                    }
+                    while (urlQueue.Count > 0)
+                    {
+                        Thread.Sleep(200);
+                    }
                 }   
                 //foreach (string file in fileList)
                 //{
