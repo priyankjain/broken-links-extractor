@@ -101,15 +101,24 @@ namespace Broken_Links_Extractor
         {
             for (; ; )
             {
-                if (allLinksProcessed == true && urlQueue.Count == 0) return;
+                if (allLinksProcessed == true && urlQueue.Count == 0) Thread.CurrentThread.Abort();
                 while (urlQueue.Count == 0)
                 {
+                    //lock (outputLock)
+                    //{
+                    //    //this.OutputBox.AppendText(Thread.CurrentThread.ManagedThreadId.ToString() + " blocked" + Environment.NewLine);
+
+                    //    this.Invoke((MethodInvoker)(() => OutputBox.AppendText(Thread.CurrentThread.ManagedThreadId.ToString() + " blocked" + Environment.NewLine)));
+                    //}
+                    if (allLinksProcessed == true) Thread.CurrentThread.Abort();
                     Thread.Sleep(100);
                 }
                 HttpWebResponse response = null;
                 string url = string.Empty;
+                
                 lock (waitLock)
                 {
+                    if (urlQueue.Count == 0) continue;
                     url = urlQueue.Dequeue();
                 }
                 try
@@ -222,7 +231,7 @@ namespace Broken_Links_Extractor
                 {
                     lock (outputLock)
                     {
-                        this.OutputBox.AppendText(url + " " + Thread.CurrentThread.ManagedThreadId.ToString() + " " + ex.Message + Environment.NewLine);
+                        this.OutputBox.AppendText("Webexception: " + url + " " + Thread.CurrentThread.ManagedThreadId.ToString() + " " + ex.Message + Environment.NewLine);
                         brokenLinksSW.WriteLine(url);
                     }
                 }
@@ -230,7 +239,7 @@ namespace Broken_Links_Extractor
                 {
                     lock (outputLock)
                     {
-                        this.OutputBox.AppendText(url + " " + Thread.CurrentThread.ManagedThreadId.ToString() + " " + ex.Message + Environment.NewLine);
+                        this.OutputBox.AppendText("HTMLWebException: " + url + " " + Thread.CurrentThread.ManagedThreadId.ToString() + " " + ex.Message + Environment.NewLine);
                         brokenLinksSW.WriteLine(url);
                     }
                 }
@@ -267,10 +276,10 @@ namespace Broken_Links_Extractor
                 thread.Start();
             }
             #endregion
-
             int counter_RunTimeFilesAdded = 0;
             while (true)
             {
+                MessageBox.Show(counter_RunTimeFilesAdded.ToString());
                 int inputFileCountBefore = fileList.Count;
 
                 #region Create Shared Objects
@@ -344,10 +353,10 @@ namespace Broken_Links_Extractor
                     else
                     {
                         //Close the previous file handles and make new file handles
-                        for (int j = 0; j < this.depth; j++)
+                        for (int j = 0; j <= this.depth; j++)
                         {
                             sw[j].Close();
-                            sw[j] = new StreamWriter(Directory.GetCurrentDirectory() + "/links_depth_" + counter_RunTimeFilesAdded + "_" + i + " " + j + ".txt", false);
+                            sw[j] = new StreamWriter(Directory.GetCurrentDirectory() + "/links_depth_" + counter_RunTimeFilesAdded + "_" + i + "_" + j + ".txt", false);
                         }
                         HashSet<String> linkSet = new HashSet<string>();
                         StreamReader sr = null;
@@ -355,7 +364,8 @@ namespace Broken_Links_Extractor
                         {
                             try
                             {
-                                sr = new StreamReader(Directory.GetCurrentDirectory()+"/links_depth_"+ counter_RunTimeFilesAdded + "_" + k + "_" + currentDepth + ".txt", false);
+                                string file = Directory.GetCurrentDirectory() + "/links_depth_" + counter_RunTimeFilesAdded + "_" + k + "_" + currentDepth + ".txt";
+                                sr = new StreamReader(file, false);
                                 while (!sr.EndOfStream)
                                 {
                                     string url = sr.ReadLine();
@@ -395,10 +405,12 @@ namespace Broken_Links_Extractor
                             }
                         }
                     }
+                    MessageBox.Show("Queue filled");
                     while (urlQueue.Count > 0)
                     {
-                        Thread.Sleep(200);
+                        Application.DoEvents();
                     }
+                    MessageBox.Show("Queue empty");
                 }   
                 //foreach (string file in fileList)
                 //{
@@ -455,6 +467,7 @@ namespace Broken_Links_Extractor
             } 
             #region Logic to terminate and wait for child threads and close shared files
             allLinksProcessed = true;
+            MessageBox.Show("Flag for termination set");
             foreach(Thread t in threadList)
             {
                 t.Join();
@@ -464,6 +477,8 @@ namespace Broken_Links_Extractor
                 if(sw[i]!=null)
                 sw[i].Close();
             }
+            brokenLinksSW.Close();
+            MessageBox.Show("Application exit");
             #endregion
         }
 
