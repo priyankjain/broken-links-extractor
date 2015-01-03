@@ -34,10 +34,8 @@ namespace Broken_Links_Extractor
         private int depth = int.Parse(ConfigurationManager.AppSettings["Default_Depth"].ToString());
         private int max_depth = int.Parse(ConfigurationManager.AppSettings["Max_Depth"].ToString());
         private int max_threads = int.Parse(ConfigurationManager.AppSettings["Max_Number_Of_Threads"].ToString());
-        //private int maxQueueSize = 1000;
         static private object waitLock = new object();
         static private object emptyLock = new object();
-        int runningThreads = 0;
         static private object outputLock = new object();
         static private object ouputFileLock = new object();
 
@@ -50,8 +48,9 @@ namespace Broken_Links_Extractor
         static private object[] linkFilesLock = null;
         private void Form1_Load(object sender, EventArgs e)
         {
-
+           
         }
+
         private static string Remove_Trailing_Slash(string url)
         {
             string temp = url;
@@ -96,7 +95,32 @@ namespace Broken_Links_Extractor
 
         }
         StreamWriter[] sw = null;
-        
+
+        private void NewThreadMethod()
+        {
+            for (; ; )
+            {
+                if (allLinksProcessed == true && urlQueue.Count == 0) Thread.CurrentThread.Abort();
+                while (urlQueue.Count == 0)
+                {
+                    if (allLinksProcessed == true) Thread.CurrentThread.Abort();
+                    Thread.Sleep(100);
+                }
+                string url = string.Empty;
+
+                lock (waitLock)
+                {
+                    if (urlQueue.Count == 0) continue;
+                    url = urlQueue.Dequeue();
+                }
+                Link linkObject = new Link(url);
+                string broken_links = linkObject.StartProcessing();
+                lock (brokenLinksOutputLock)
+                {
+                    brokenLinksSW.Write(broken_links);
+                }
+            }
+        }
         private void threadMethod()
         {
             for (; ; )
@@ -104,12 +128,6 @@ namespace Broken_Links_Extractor
                 if (allLinksProcessed == true && urlQueue.Count == 0) Thread.CurrentThread.Abort();
                 while (urlQueue.Count == 0)
                 {
-                    //lock (outputLock)
-                    //{
-                    //    //this.OutputBox.AppendText(Thread.CurrentThread.ManagedThreadId.ToString() + " blocked" + Environment.NewLine);
-
-                    //    this.Invoke((MethodInvoker)(() => OutputBox.AppendText(Thread.CurrentThread.ManagedThreadId.ToString() + " blocked" + Environment.NewLine)));
-                    //}
                     if (allLinksProcessed == true) Thread.CurrentThread.Abort();
                     Thread.Sleep(100);
                 }
@@ -148,7 +166,7 @@ namespace Broken_Links_Extractor
                             if (muri != null)
                                 if (Uri.Compare(muri, currentUri, UriComponents.Host, UriFormat.UriEscaped, StringComparison.CurrentCulture) == 0)
                                 {
-                                    linkList.Add(Url_Cleanup(muri.ToString()));
+                                    linkList.Add(Remove_Trailing_Slash(muri.ToString()));
                                 }
                         }
                     }
@@ -261,10 +279,118 @@ namespace Broken_Links_Extractor
                 }
             }
         }
+
         private void StartButton_Click(object sender, EventArgs e)
         {
             allLinksProcessed = false; // A flag which will make all the threads stop when the main thread ends
+            Link.depth = this.depth;
+            Link.timeOut = int.Parse(ConfigurationManager.AppSettings["Timeout_In_Seconds"]) * 1000;
+            #region Spawn the child consumer threads
+            List<Thread> threadList = new List<Thread>();
+            //Spawn the threads
+            for (int i = 0; i < threads; i++)
+            {
+                Thread thread = new Thread(NewThreadMethod);
+                threadList.Add(thread);
+                thread.IsBackground = true;
+                thread.Start();
+            }
+            #endregion
+            int counter_RunTimeFilesAdded = 0;
+            while (true)
+            {
+                MessageBox.Show(counter_RunTimeFilesAdded.ToString());
+                int inputFileCountBefore = fileList.Count;
 
+                        HashSet<String> linkSet = new HashSet<string>();
+                        foreach (string file in fileList)
+                        {
+                            StreamReader sr = null;
+                            try
+                            {
+                                sr = new StreamReader(file);
+                                while (!sr.EndOfStream)
+                                {
+                                    string url = sr.ReadLine();
+                                    Uri uri = null;
+                                    Uri.TryCreate(url, UriKind.Absolute, out uri);
+                                    if (uri == null)
+                                    {
+                                        lock (outputLock)
+                                        {
+                                            this.OutputBox.AppendText("Invalid URL: " + url + " in file: " + file);
+                                        }
+                                    }
+                                    else
+                                    {
+                                        linkSet.Add(url);
+                                    }
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                lock (outputLock)
+                                {
+                                    this.OutputBox.AppendText("Error while opening one of the files: " + ex.Message);
+                                }
+                            }
+                            finally
+                            {
+                                if (sr != null)
+                                    sr.Close();
+                            }
+                        }
+                        lock (waitLock)
+                        {
+                            foreach (string url in linkSet)
+                            {
+                                urlQueue.Enqueue(url);
+                            }
+                        }
+                    
+                    MessageBox.Show("Queue filled");
+                    while (urlQueue.Count > 0)
+                    {
+                        Application.DoEvents();
+                    }
+                    MessageBox.Show("Queue empty");
+                
+                #region Logic to terminate the main thread
+                int inputFileCountAfter = fileList.Count;
+                if (inputFileCountBefore == inputFileCountAfter) break;
+                else
+                {
+                    for (int i = 0; i < inputFileCountBefore; i++)
+                    {
+                        fileList.RemoveAt(i);
+                    }
+                    counter_RunTimeFilesAdded++;
+                }
+                #endregion
+
+            }
+            #region Logic to terminate and wait for child threads and close shared files
+            allLinksProcessed = true;
+            MessageBox.Show("Flag for termination set");
+            foreach (Thread t in threadList)
+            {
+                t.Join();
+            }
+            
+            brokenLinksSW.Close();
+            MessageBox.Show("Application exit");
+            Link.LogFile.Close();
+            #endregion
+        }
+
+      
+
+
+        private void StartButton_Click_Old(object sender, EventArgs e)
+        {
+            allLinksProcessed = false; // A flag which will make all the threads stop when the main thread ends
+            Link.depth = this.depth;
+            Link.timeOut = int.Parse(ConfigurationManager.AppSettings["Timeout_In_Seconds"]) * 1000;
             #region Spawn the child consumer threads
             List<Thread> threadList = new List<Thread>();
             //Spawn the threads
@@ -412,46 +538,6 @@ namespace Broken_Links_Extractor
                     }
                     MessageBox.Show("Queue empty");
                 }   
-                //foreach (string file in fileList)
-                //{
-                //    StreamReader sr = null;
-                //    try
-                //    {
-                //        sr = new StreamReader(file);
-
-                //        while (!sr.EndOfStream)
-                //        {
-                //            lock (waitLock)
-                //            {
-                //                while (urlQueue.Count < maxQueueSize && !sr.EndOfStream)
-                //                {
-                //                    urlQueue.Enqueue(sr.ReadLine());
-                //                }
-                //            }
-                //            if (sr.EndOfStream)
-                //                break;
-                //            //Monitor.PulseAll(emptyLock);
-                //            //Wait till more urls need to be added
-                //            while (urlQueue.Count > (int)(maxQueueSize / 100))
-                //            {
-                //                Thread.Sleep(1000);
-                //            }
-                //        }
-                //    }
-                //    catch (IOException ex)
-                //    {
-                //        lock (outputLock)
-                //        {
-                //            this.OutputBox.AppendText("Error while opening one of the files: " + ex.Message);
-                //        }
-                //    }
-                //    finally
-                //    {
-                //        if (sr != null)
-                //            sr.Close();
-                //    }
-                //}
-
                 #region Logic to terminate the main thread
                 int inputFileCountAfter = fileList.Count;
                 if (inputFileCountBefore == inputFileCountAfter) break;
@@ -461,6 +547,7 @@ namespace Broken_Links_Extractor
                     {
                         fileList.RemoveAt(i);
                     }
+                    counter_RunTimeFilesAdded++;
                 }
                 #endregion
 
@@ -498,6 +585,7 @@ namespace Broken_Links_Extractor
                 fileList.Add(this.openFileDialog1.FileName.ToString());
             }
         }
+
         private void Speed_SelectedIndexChanged(object sender, EventArgs e)
         {
             this.threads = int.Parse(this.Speed.SelectedItem.ToString());
@@ -516,6 +604,11 @@ namespace Broken_Links_Extractor
         private void groupBox1_Enter_1(object sender, EventArgs e)
         {
 
+        }
+
+        private void OutputBox_LinkClicked(object sender, LinkClickedEventArgs e)
+        {
+            System.Diagnostics.Process.Start(e.LinkText);
         }
     }
 }

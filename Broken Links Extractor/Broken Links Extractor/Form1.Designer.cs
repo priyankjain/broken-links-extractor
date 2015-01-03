@@ -58,6 +58,7 @@
             this.OutputBox.Size = new System.Drawing.Size(903, 161);
             this.OutputBox.TabIndex = 2;
             this.OutputBox.Text = "";
+            this.OutputBox.LinkClicked += new System.Windows.Forms.LinkClickedEventHandler(this.OutputBox_LinkClicked);
             this.OutputBox.TextChanged += new System.EventHandler(this.OutputBox_TextChanged);
             // 
             // Speed
