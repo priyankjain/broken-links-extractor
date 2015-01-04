@@ -10,3 +10,12 @@ C:\Users\priyank\Documents\Visual Studio 2012\Projects\Broken Links Extractor\Br
 C:\Users\priyank\Documents\Visual Studio 2012\Projects\broken-links-extractor\Broken Links Extractor\Broken Links Extractor\bin\Debug\Broken Links Extractor.exe
 C:\Users\priyank\Documents\Visual Studio 2012\Projects\broken-links-extractor\Broken Links Extractor\Broken Links Extractor\bin\Debug\Broken Links Extractor.pdb
 C:\Users\priyank\Documents\Visual Studio 2012\Projects\broken-links-extractor\Broken Links Extractor\Broken Links Extractor\bin\Debug\HtmlAgilityPack.dll
+C:\Users\priyank\Documents\Visual Studio 2012\Projects\broken-links-extractor\Broken Links Extractor\Broken Links Extractor\bin\Debug\Broken Links Extractor.exe.config
+C:\Users\priyank\Documents\Visual Studio 2012\Projects\broken-links-extractor\Broken Links Extractor\Broken Links Extractor\bin\Debug\HtmlAgilityPack.pdb
+C:\Users\priyank\Documents\Visual Studio 2012\Projects\broken-links-extractor\Broken Links Extractor\Broken Links Extractor\bin\Debug\HtmlAgilityPack.xml
+C:\Users\priyank\Documents\Visual Studio 2012\Projects\broken-links-extractor\Broken Links Extractor\Broken Links Extractor\obj\Debug\Broken Links Extractor.csprojResolveAssemblyReference.cache
+C:\Users\priyank\Documents\Visual Studio 2012\Projects\broken-links-extractor\Broken Links Extractor\Broken Links Extractor\obj\Debug\Broken_Links_Extractor.Form1.resources
+C:\Users\priyank\Documents\Visual Studio 2012\Projects\broken-links-extractor\Broken Links Extractor\Broken Links Extractor\obj\Debug\Broken_Links_Extractor.Properties.Resources.resources
+C:\Users\priyank\Documents\Visual Studio 2012\Projects\broken-links-extractor\Broken Links Extractor\Broken Links Extractor\obj\Debug\Broken Links Extractor.csproj.GenerateResource.Cache
+C:\Users\priyank\Documents\Visual Studio 2012\Projects\broken-links-extractor\Broken Links Extractor\Broken Links Extractor\obj\Debug\Broken Links Extractor.exe
+C:\Users\priyank\Documents\Visual Studio 2012\Projects\broken-links-extractor\Broken Links Extractor\Broken Links Extractor\obj\Debug\Broken Links Extractor.pdb

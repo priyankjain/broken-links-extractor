@@ -7,13 +7,15 @@ using System.IO;
 using System.Threading.Tasks;
 using HtmlAgilityPack;
 using System.Net;
-
+using System.Windows.Forms;
 namespace Broken_Links_Extractor
 {
     class Link
     {
         private static object LogFileLock = new object();
         public static StreamWriter LogFile = new StreamWriter(Directory.GetCurrentDirectory() + "/logfile.txt",false);
+
+        public static System.Windows.Forms.DataGridView OutputTable = null;
 
         private static string Url_Cleanup(string url)
         {
@@ -74,9 +76,10 @@ namespace Broken_Links_Extractor
         }
 
 
-        private HashSet<string> GetAllLinksOnUrl(string url,out string error_message)
+        private HashSet<string> GetAllLinksOnUrl(string url,out string error_message,out string response_code)
         {
             error_message = string.Empty;
+            response_code = string.Empty;
             HttpWebResponse response = null;
             HashSet<string> linkList = null;
             try
@@ -110,11 +113,23 @@ namespace Broken_Links_Extractor
                         }
                 }
                 #endregion
-                error_message = "OK";
+                error_message = response.StatusDescription;
+                response_code = ((int)response.StatusCode).ToString();
             }
             catch (WebException ex)
             {
-                error_message = ex.Message;
+                if (ex.Response != null)
+                    error_message = ((HttpWebResponse)ex.Response).StatusDescription;
+                else
+                    error_message = ex.Message;
+
+                if(ex.Response != null)
+                response_code = ((int)((HttpWebResponse)ex.Response).StatusCode).ToString();
+
+                if (error_message.Contains("The remote name could not be resolved:"))
+                {
+                    response_code = "1000";
+                }
             }
             catch (HtmlAgilityPack.HtmlWebException ex)
             {
@@ -140,10 +155,20 @@ namespace Broken_Links_Extractor
             //For each link, process the current link by calling GetAllLinksOnUrl
             HashSet<string> currChilds = null;
             string error_message = string.Empty;
-            currChilds = this.GetAllLinksOnUrl(this.BaseUrl,out error_message);
+            string response_code = string.Empty;
+            currChilds = this.GetAllLinksOnUrl(this.BaseUrl,out error_message, out response_code);
+            lock (Form1.outputLock)
+            {
+                //OutputTable.SuspendLayout();
+                OutputTable.Rows.Insert(0, this.BaseUrl.ToString(), response_code, error_message);
+                Form1.logFileCSV.WriteLine("\"" + this.BaseUrl.ToString() + "\",\"" + response_code + "\",\"" + error_message + "\"");
+                if (OutputTable.Rows.Count > 50)
+                    OutputTable.Rows.RemoveAt(OutputTable.Rows.Count - 1);
+                //OutputTable.ResumeLayout();
+            }
             if (error_message != "OK")
             {
-                broken_list += BaseUrl + " " + error_message + Environment.NewLine;
+                broken_list += "\"" + BaseUrl + "\",\"" + response_code + "\",\"" + error_message + "\"" + Environment.NewLine;
             }
             if(error_message == "OK" && currChilds != null)
             foreach (string url in currChilds)
@@ -154,10 +179,20 @@ namespace Broken_Links_Extractor
             {
                 currChilds = null;
                 error_message = string.Empty;
-                currChilds = this.GetAllLinksOnUrl(this.ChildUrls[i].ToString(), out error_message);
+                response_code = string.Empty;
+                currChilds = this.GetAllLinksOnUrl(this.ChildUrls[i].ToString(), out error_message, out response_code);
+                lock (Form1.outputLock)
+                {
+                    //OutputTable.SuspendLayout();
+                    OutputTable.Rows.Insert(0,this.ChildUrls[i].ToString(), response_code, error_message);
+                    Form1.logFileCSV.WriteLine("\"" + this.ChildUrls[i].ToString() + "\",\""+response_code+"\",\""+error_message+"\"");
+                    if (OutputTable.Rows.Count > 50)
+                        OutputTable.Rows.RemoveAt(OutputTable.Rows.Count - 1);
+                    //OutputTable.ResumeLayout();
+                }
                 if (error_message != "OK")
                 {
-                    broken_list += BaseUrl + " " + error_message + Environment.NewLine;
+                    broken_list += "\"" + this.ChildUrls[i].ToString() + "\",\"" + response_code + "\",\"" + error_message + "\"" + Environment.NewLine;
                 }
                 if (error_message == "OK" && currChilds != null)
                 foreach (string url in currChilds)
@@ -165,13 +200,14 @@ namespace Broken_Links_Extractor
                     this.AddChildLink(url);
                 }
             }
-            lock (LogFileLock)
-            {
-                foreach(DictionaryEntry pair in this.ChildUrls)
-                {
-                    LogFile.WriteLine(this.BaseUrl + " " + pair.Value.ToString());
-                }
-            }
+            //lock (LogFileLock)
+            //{
+            //    foreach(DictionaryEntry pair in this.ChildUrls)
+            //    {
+            //        LogFile.WriteLine(this.BaseUrl + " " + pair.Value.ToString());
+            //    }
+            //    LogFile.Flush();
+            //}
             GC.Collect();
             ChildUrls.Clear();
             return broken_list;

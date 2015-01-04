@@ -29,15 +29,19 @@
         private void InitializeComponent()
         {
             this.openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
-            this.OutputBox = new System.Windows.Forms.RichTextBox();
             this.Speed = new System.Windows.Forms.ComboBox();
             this.UploadButton = new System.Windows.Forms.Button();
             this.StartButton = new System.Windows.Forms.Button();
             this.Output = new System.Windows.Forms.GroupBox();
+            this.OutputTable = new System.Windows.Forms.DataGridView();
             this.DepthSelector = new System.Windows.Forms.ComboBox();
             this.Actions = new System.Windows.Forms.GroupBox();
             this.Options = new System.Windows.Forms.GroupBox();
+            this.Address = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.ResponseCode = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.Description = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.Output.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.OutputTable)).BeginInit();
             this.Actions.SuspendLayout();
             this.Options.SuspendLayout();
             this.SuspendLayout();
@@ -45,21 +49,6 @@
             // openFileDialog1
             // 
             this.openFileDialog1.Title = "Upload Links File";
-            // 
-            // OutputBox
-            // 
-            this.OutputBox.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.OutputBox.BackColor = System.Drawing.SystemColors.ActiveBorder;
-            this.OutputBox.BorderStyle = System.Windows.Forms.BorderStyle.None;
-            this.OutputBox.Location = new System.Drawing.Point(6, 16);
-            this.OutputBox.Name = "OutputBox";
-            this.OutputBox.Size = new System.Drawing.Size(903, 161);
-            this.OutputBox.TabIndex = 2;
-            this.OutputBox.Text = "";
-            this.OutputBox.LinkClicked += new System.Windows.Forms.LinkClickedEventHandler(this.OutputBox_LinkClicked);
-            this.OutputBox.TextChanged += new System.EventHandler(this.OutputBox_TextChanged);
             // 
             // Speed
             // 
@@ -104,7 +93,7 @@
             this.Output.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.Output.Controls.Add(this.OutputBox);
+            this.Output.Controls.Add(this.OutputTable);
             this.Output.Location = new System.Drawing.Point(12, 76);
             this.Output.Name = "Output";
             this.Output.Size = new System.Drawing.Size(915, 183);
@@ -112,6 +101,29 @@
             this.Output.TabStop = false;
             this.Output.Text = "Output";
             this.Output.Enter += new System.EventHandler(this.groupBox1_Enter);
+            // 
+            // OutputTable
+            // 
+            this.OutputTable.AllowUserToAddRows = false;
+            this.OutputTable.AllowUserToDeleteRows = false;
+            this.OutputTable.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.OutputTable.AutoSizeColumnsMode = System.Windows.Forms.DataGridViewAutoSizeColumnsMode.Fill;
+            this.OutputTable.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+            this.OutputTable.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
+            this.Address,
+            this.ResponseCode,
+            this.Description});
+            this.OutputTable.Location = new System.Drawing.Point(6, 19);
+            this.OutputTable.Name = "OutputTable";
+            this.OutputTable.ReadOnly = true;
+            this.OutputTable.RowHeadersVisible = false;
+            this.OutputTable.RowHeadersWidthSizeMode = System.Windows.Forms.DataGridViewRowHeadersWidthSizeMode.AutoSizeToDisplayedHeaders;
+            this.OutputTable.ScrollBars = System.Windows.Forms.ScrollBars.None;
+            this.OutputTable.Size = new System.Drawing.Size(903, 158);
+            this.OutputTable.TabIndex = 4;
+            this.OutputTable.CellContentClick += new System.Windows.Forms.DataGridViewCellEventHandler(this.OutputTable_CellContentClick);
             // 
             // DepthSelector
             // 
@@ -149,6 +161,24 @@
             this.Options.TabStop = false;
             this.Options.Text = "Options";
             // 
+            // Address
+            // 
+            this.Address.HeaderText = "Address";
+            this.Address.Name = "Address";
+            this.Address.ReadOnly = true;
+            // 
+            // ResponseCode
+            // 
+            this.ResponseCode.HeaderText = "Response Code";
+            this.ResponseCode.Name = "ResponseCode";
+            this.ResponseCode.ReadOnly = true;
+            // 
+            // Description
+            // 
+            this.Description.HeaderText = "Description";
+            this.Description.Name = "Description";
+            this.Description.ReadOnly = true;
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -161,8 +191,8 @@
             this.Text = "Broken Links Extractor";
             this.WindowState = System.Windows.Forms.FormWindowState.Maximized;
             this.Load += new System.EventHandler(this.Form1_Load);
-            this.Resize += new System.EventHandler(this.Form1_Resize);
             this.Output.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)(this.OutputTable)).EndInit();
             this.Actions.ResumeLayout(false);
             this.Options.ResumeLayout(false);
             this.ResumeLayout(false);
@@ -172,7 +202,6 @@
         #endregion
 
         private System.Windows.Forms.OpenFileDialog openFileDialog1;
-        private System.Windows.Forms.RichTextBox OutputBox;
         private System.Windows.Forms.ComboBox Speed;
         private System.Windows.Forms.Button UploadButton;
         private System.Windows.Forms.Button StartButton;
@@ -180,6 +209,10 @@
         private System.Windows.Forms.ComboBox DepthSelector;
         private System.Windows.Forms.GroupBox Actions;
         private System.Windows.Forms.GroupBox Options;
+        private System.Windows.Forms.DataGridView OutputTable;
+        private System.Windows.Forms.DataGridViewTextBoxColumn Address;
+        private System.Windows.Forms.DataGridViewTextBoxColumn ResponseCode;
+        private System.Windows.Forms.DataGridViewTextBoxColumn Description;
     }
 }
 
