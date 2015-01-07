@@ -75,6 +75,51 @@ namespace Broken_Links_Extractor
                 ChildUrls[lastIndex++] = url;
         }
 
+        private void GetStatusOnly(string url, out string error_message, out string response_code)
+        {
+            error_message = string.Empty;
+            response_code = string.Empty;
+            HttpWebResponse response = null;
+            try
+            {
+                HttpWebRequest request = (HttpWebRequest)HttpWebRequest.Create(url);
+                request.Proxy = null;
+                request.Timeout = timeOut;
+                request.Method = "GET";
+                response = (HttpWebResponse)request.GetResponse();
+                error_message = response.StatusDescription;
+                response_code = ((int)response.StatusCode).ToString();
+            }
+            catch (WebException ex)
+            {
+                if (ex.Response != null)
+                    error_message = ((HttpWebResponse)ex.Response).StatusDescription;
+                else
+                    error_message = ex.Message;
+
+                if (ex.Response != null)
+                    response_code = ((int)((HttpWebResponse)ex.Response).StatusCode).ToString();
+
+                if (error_message.Contains("The remote name could not be resolved:"))
+                {
+                    response_code = "1000";
+                }
+            }
+            catch (Exception ex)
+            {
+                error_message = ex.Message + " " + ex.StackTrace;
+            }
+            finally
+            {
+                if (response != null)
+                {
+                    response.Close();
+                    response.Dispose();
+                }
+            }
+            return;
+        }
+        
 
         private HashSet<string> GetAllLinksOnUrl(string url,out string error_message,out string response_code)
         {
@@ -202,13 +247,23 @@ namespace Broken_Links_Extractor
                     this.AddChildLink(url);
                 }
             }
-            lock (Form1.externalLinksFileLock)
+            foreach (string url in this.externalList)
             {
-                foreach(string url in this.externalList)
-                Form1.externalLinksSW.WriteLine(url);
-
-                Form1.externalLinksSW.Flush();
-            }
+                error_message = string.Empty;
+                response_code = string.Empty;
+                this.GetStatusOnly(url, out error_message, out response_code);
+                lock (Form1.outputLock)
+                {
+                    OutputTable.Rows.Insert(0, url, response_code, error_message);
+                    Form1.logFileCSV.WriteLine("\"" + url + "\",\"" + response_code + "\",\"" + error_message + "\"");
+                    if (OutputTable.Rows.Count > 50)
+                        OutputTable.Rows.RemoveAt(OutputTable.Rows.Count - 1);
+                }
+                if (error_message != "OK")
+                {
+                    broken_list += "\"" + url + "\",\"" + response_code + "\",\"" + error_message + "\"" + Environment.NewLine;
+                }
+            }   
             ChildUrls.Clear();
             externalList.Clear();
             GC.Collect();

@@ -78,7 +78,7 @@ namespace Broken_Links_Extractor
                 }
             }
         }
-
+/*
         private void CheckExternalLinksMethod()
         {
             for (; ; )
@@ -254,14 +254,14 @@ namespace Broken_Links_Extractor
                 }
             }
         }
-
+        */
         private void StartButton_Click(object sender, EventArgs e)
         {
             try
             {
                 logFileCSV = new StreamWriter(Directory.GetCurrentDirectory() + "/logfile.csv", false);
                 brokenLinksSW = new StreamWriter(Directory.GetCurrentDirectory() + "/broken_links.csv", false);
-                externalLinksSW = new StreamWriter(Directory.GetCurrentDirectory() + "/external_links.txt", false);
+                //externalLinksSW = new StreamWriter(Directory.GetCurrentDirectory() + "/external_links.txt", false);
                 this.OutputTable.Dock = DockStyle.Fill;
                 Link.OutputTable = this.OutputTable;
                 allLinksProcessed = false; // A flag which will make all the threads stop when the main thread ends
@@ -353,7 +353,7 @@ namespace Broken_Links_Extractor
                     #endregion
 
                 }
-                #region Logic to terminate and wait for child threads and close shared files
+                
                 allLinksProcessed = true;
                 foreach (Thread t in threadList)
                 {
@@ -377,11 +377,11 @@ namespace Broken_Links_Extractor
                     logFileCSV.Close();
                     logFileCSV = null;
                 }
-                if (externalLinksSW != null)
-                {
-                    externalLinksSW.Close();
-                    externalLinksSW = null;
-                }
+                //if (externalLinksSW != null)
+                //{
+                //    externalLinksSW.Close();
+                //    externalLinksSW = null;
+                //}
             }
         }
 
