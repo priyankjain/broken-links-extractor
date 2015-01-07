@@ -13,10 +13,9 @@ namespace Broken_Links_Extractor
     class Link
     {
         private static object LogFileLock = new object();
-        public static StreamWriter LogFile = new StreamWriter(Directory.GetCurrentDirectory() + "/logfile.txt",false);
 
         public static System.Windows.Forms.DataGridView OutputTable = null;
-
+        private HashSet<string> externalList = null;
         private static string Url_Cleanup(string url)
         {
             #region Url Clean Up
@@ -66,6 +65,7 @@ namespace Broken_Links_Extractor
         {
             this.BaseUrl = baseUrl;
             ChildUrls = new Hashtable();
+            externalList = new HashSet<string>();
         }
 
         public void AddChildLink(string url)
@@ -105,11 +105,17 @@ namespace Broken_Links_Extractor
                             Uri muri = null;
                             Uri.TryCreate(currentUri, node.GetAttributeValue("href", "").ToString(), out muri);
                             if (muri != null)
+                            {
                                 if (Uri.Compare(muri, currentUri, UriComponents.Host, UriFormat.UriEscaped, StringComparison.CurrentCulture) == 0)
                                 {
                                     if (muri.ToString().Replace(@"http://", "").Replace(@"https://", "").Split('/').Length - 1 <= depth)
                                         linkList.Add(Url_Cleanup(muri.ToString()));
                                 }
+                                else
+                                {
+                                    this.externalList.Add(muri.Host);
+                                }
+                            }
                         }
                 }
                 #endregion
@@ -159,12 +165,10 @@ namespace Broken_Links_Extractor
             currChilds = this.GetAllLinksOnUrl(this.BaseUrl,out error_message, out response_code);
             lock (Form1.outputLock)
             {
-                //OutputTable.SuspendLayout();
                 OutputTable.Rows.Insert(0, this.BaseUrl.ToString(), response_code, error_message);
                 Form1.logFileCSV.WriteLine("\"" + this.BaseUrl.ToString() + "\",\"" + response_code + "\",\"" + error_message + "\"");
                 if (OutputTable.Rows.Count > 50)
                     OutputTable.Rows.RemoveAt(OutputTable.Rows.Count - 1);
-                //OutputTable.ResumeLayout();
             }
             if (error_message != "OK")
             {
@@ -183,12 +187,10 @@ namespace Broken_Links_Extractor
                 currChilds = this.GetAllLinksOnUrl(this.ChildUrls[i].ToString(), out error_message, out response_code);
                 lock (Form1.outputLock)
                 {
-                    //OutputTable.SuspendLayout();
                     OutputTable.Rows.Insert(0,this.ChildUrls[i].ToString(), response_code, error_message);
                     Form1.logFileCSV.WriteLine("\"" + this.ChildUrls[i].ToString() + "\",\""+response_code+"\",\""+error_message+"\"");
                     if (OutputTable.Rows.Count > 50)
                         OutputTable.Rows.RemoveAt(OutputTable.Rows.Count - 1);
-                    //OutputTable.ResumeLayout();
                 }
                 if (error_message != "OK")
                 {
@@ -200,16 +202,17 @@ namespace Broken_Links_Extractor
                     this.AddChildLink(url);
                 }
             }
-            //lock (LogFileLock)
-            //{
-            //    foreach(DictionaryEntry pair in this.ChildUrls)
-            //    {
-            //        LogFile.WriteLine(this.BaseUrl + " " + pair.Value.ToString());
-            //    }
-            //    LogFile.Flush();
-            //}
-            GC.Collect();
+            lock (Form1.externalLinksFileLock)
+            {
+                foreach(string url in this.externalList)
+                Form1.externalLinksSW.WriteLine(url);
+
+                Form1.externalLinksSW.Flush();
+            }
             ChildUrls.Clear();
+            externalList.Clear();
+            GC.Collect();
+            
             return broken_list;
         }
     }
