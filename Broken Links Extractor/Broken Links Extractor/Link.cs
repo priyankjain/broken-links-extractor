@@ -5,7 +5,6 @@ using System.Linq;
 using System.Text;
 using System.IO;
 using System.Threading.Tasks;
-using HtmlAgilityPack;
 using System.Net;
 using System.Windows.Forms;
 using System.Text.RegularExpressions;
@@ -144,13 +143,8 @@ namespace Broken_Links_Extractor
                 {
                     Uri muri = null;
                     int index = 0;
-                    string temp = string.Empty;
+                    string temp = m.Value.ToString();
                     #region Url Clean Up
-                    //Remove any query part
-                    //int index = m.Value.ToString().IndexOf('?');
-                    //string temp = m.Value.ToString();
-                    //if (index != -1)
-                    //    temp = m.Value.ToString().Remove(index);
 
                     //Remove any leftover part starting with "
                     index = temp.IndexOf('"');
@@ -207,10 +201,6 @@ namespace Broken_Links_Extractor
                 {
                     response_code = "1000";
                 }
-            }
-            catch (HtmlAgilityPack.HtmlWebException ex)
-            {
-                error_message = ex.Message;
             }
             catch (Exception ex)
             {
