@@ -158,7 +158,11 @@ namespace Broken_Links_Extractor
                                 }
                                 else
                                 {
-                                    this.externalList.Add(muri.Host);
+                                    string external_url = muri.Host;
+                                    if (!external_url.Contains(@"http://") && !external_url.Contains(@"https://"))
+                                        external_url = @"http://" + external_url;
+                                    if(external_url != @"http://")
+                                    this.externalList.Add(external_url);
                                 }
                             }
                         }
