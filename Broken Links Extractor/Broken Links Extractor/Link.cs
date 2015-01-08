@@ -8,12 +8,14 @@ using System.Threading.Tasks;
 using HtmlAgilityPack;
 using System.Net;
 using System.Windows.Forms;
+using System.Text.RegularExpressions;
+
 namespace Broken_Links_Extractor
 {
     class Link
     {
         private static object LogFileLock = new object();
-
+        private static Regex linkParser = new Regex(@"\b(?:https?://|www\.)\S+\b", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         public static System.Windows.Forms.DataGridView OutputTable = null;
         private HashSet<string> externalList = null;
         private static string Url_Cleanup(string url)
@@ -137,37 +139,57 @@ namespace Broken_Links_Extractor
                 StreamReader sr = new StreamReader(response.GetResponseStream());
                 string html = sr.ReadToEnd();
                 Uri currentUri = new Uri(url.Replace(@"http://www.", @"http://").Replace(@"http://", @"http://www."));
-                #region Extract Links Using HTMLAgilityPack
-                HtmlAgilityPack.HtmlDocument doc = new HtmlAgilityPack.HtmlDocument();
-                doc.LoadHtml(html);
-                if (doc.DocumentNode.SelectSingleNode("//body") != null)
+                linkList = new HashSet<string>();
+                foreach (Match m in linkParser.Matches(html))
                 {
-                    HtmlNodeCollection collection = doc.DocumentNode.SelectNodes("//a[@href]");
-                    linkList = new HashSet<string>();
-                    if (collection != null)
-                        foreach (HtmlNode node in collection)
+                    Uri muri = null;
+                    int index = 0;
+                    string temp = string.Empty;
+                    #region Url Clean Up
+                    //Remove any query part
+                    //int index = m.Value.ToString().IndexOf('?');
+                    //string temp = m.Value.ToString();
+                    //if (index != -1)
+                    //    temp = m.Value.ToString().Remove(index);
+
+                    //Remove any leftover part starting with "
+                    index = temp.IndexOf('"');
+                    if (index != -1)
+                        temp = temp.Remove(index);
+
+                    //Remove any leftover part starting with #
+                    index = temp.IndexOf('#');
+                    if (index != -1)
+                        temp = temp.Remove(index);
+
+                    //Remove any leftover part starting with '
+                    index = temp.IndexOf('\'');
+                    if (index != -1)
+                        temp = temp.Remove(index);
+
+                    //Remove trailing slashes
+                    if (temp[temp.Length - 1] == '/')
+                        temp = temp.Substring(0, temp.Length - 1);
+                    #endregion 
+
+                    Uri.TryCreate(currentUri, temp, out muri);
+                    if (muri != null)
+                    {
+                        if (Uri.Compare(muri, currentUri, UriComponents.Host, UriFormat.UriEscaped, StringComparison.CurrentCulture) == 0)
                         {
-                            Uri muri = null;
-                            Uri.TryCreate(currentUri, node.GetAttributeValue("href", "").ToString(), out muri);
-                            if (muri != null)
-                            {
-                                if (Uri.Compare(muri, currentUri, UriComponents.Host, UriFormat.UriEscaped, StringComparison.CurrentCulture) == 0)
-                                {
-                                    if (muri.ToString().Replace(@"http://", "").Replace(@"https://", "").Split('/').Length - 1 <= depth)
-                                        linkList.Add(Url_Cleanup(muri.ToString()));
-                                }
-                                else
-                                {
-                                    string external_url = muri.Host;
-                                    if (!external_url.Contains(@"http://") && !external_url.Contains(@"https://"))
-                                        external_url = @"http://" + external_url;
-                                    if(external_url != @"http://")
-                                    this.externalList.Add(external_url);
-                                }
-                            }
+                            if (muri.ToString().Replace(@"http://", "").Replace(@"https://", "").Split('/').Length - 1 <= depth)
+                                linkList.Add(Url_Cleanup(muri.ToString()));
                         }
+                        else
+                        {
+                            string external_url = muri.Host;
+                            if (!external_url.Contains(@"http://") && !external_url.Contains(@"https://"))
+                                external_url = @"http://" + external_url;
+                            if (external_url != @"http://")
+                                this.externalList.Add(external_url);
+                        }
+                    }
                 }
-                #endregion
                 error_message = response.StatusDescription;
                 response_code = ((int)response.StatusCode).ToString();
             }
