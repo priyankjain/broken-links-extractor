@@ -34,12 +34,13 @@
             this.StartButton = new System.Windows.Forms.Button();
             this.Output = new System.Windows.Forms.GroupBox();
             this.OutputTable = new System.Windows.Forms.DataGridView();
-            this.DepthSelector = new System.Windows.Forms.ComboBox();
-            this.Actions = new System.Windows.Forms.GroupBox();
-            this.Options = new System.Windows.Forms.GroupBox();
             this.Address = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.ResponseCode = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.Description = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.DepthSelector = new System.Windows.Forms.ComboBox();
+            this.Actions = new System.Windows.Forms.GroupBox();
+            this.Options = new System.Windows.Forms.GroupBox();
+            this.PercentageBox = new System.Windows.Forms.TextBox();
             this.Output.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.OutputTable)).BeginInit();
             this.Actions.SuspendLayout();
@@ -94,9 +95,9 @@
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
             this.Output.Controls.Add(this.OutputTable);
-            this.Output.Location = new System.Drawing.Point(12, 76);
+            this.Output.Location = new System.Drawing.Point(12, 83);
             this.Output.Name = "Output";
-            this.Output.Size = new System.Drawing.Size(915, 183);
+            this.Output.Size = new System.Drawing.Size(915, 176);
             this.Output.TabIndex = 5;
             this.Output.TabStop = false;
             this.Output.Text = "Output";
@@ -121,9 +122,27 @@
             this.OutputTable.RowHeadersVisible = false;
             this.OutputTable.RowHeadersWidthSizeMode = System.Windows.Forms.DataGridViewRowHeadersWidthSizeMode.AutoSizeToDisplayedHeaders;
             this.OutputTable.ScrollBars = System.Windows.Forms.ScrollBars.None;
-            this.OutputTable.Size = new System.Drawing.Size(903, 158);
+            this.OutputTable.Size = new System.Drawing.Size(903, 151);
             this.OutputTable.TabIndex = 4;
             this.OutputTable.CellContentClick += new System.Windows.Forms.DataGridViewCellEventHandler(this.OutputTable_CellContentClick);
+            // 
+            // Address
+            // 
+            this.Address.HeaderText = "Address";
+            this.Address.Name = "Address";
+            this.Address.ReadOnly = true;
+            // 
+            // ResponseCode
+            // 
+            this.ResponseCode.HeaderText = "Response Code";
+            this.ResponseCode.Name = "ResponseCode";
+            this.ResponseCode.ReadOnly = true;
+            // 
+            // Description
+            // 
+            this.Description.HeaderText = "Description";
+            this.Description.Name = "Description";
+            this.Description.ReadOnly = true;
             // 
             // DepthSelector
             // 
@@ -161,41 +180,35 @@
             this.Options.TabStop = false;
             this.Options.Text = "Options";
             // 
-            // Address
+            // PercentageBox
             // 
-            this.Address.HeaderText = "Address";
-            this.Address.Name = "Address";
-            this.Address.ReadOnly = true;
-            // 
-            // ResponseCode
-            // 
-            this.ResponseCode.HeaderText = "Response Code";
-            this.ResponseCode.Name = "ResponseCode";
-            this.ResponseCode.ReadOnly = true;
-            // 
-            // Description
-            // 
-            this.Description.HeaderText = "Description";
-            this.Description.Name = "Description";
-            this.Description.ReadOnly = true;
+            this.PercentageBox.Location = new System.Drawing.Point(12, 57);
+            this.PercentageBox.Name = "PercentageBox";
+            this.PercentageBox.ReadOnly = true;
+            this.PercentageBox.Size = new System.Drawing.Size(100, 20);
+            this.PercentageBox.TabIndex = 9;
+            this.PercentageBox.Text = "Completed: 0%";
             // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(939, 271);
+            this.Controls.Add(this.PercentageBox);
             this.Controls.Add(this.Options);
             this.Controls.Add(this.Output);
             this.Controls.Add(this.Actions);
             this.Name = "Form1";
             this.Text = "Broken Links Extractor";
             this.WindowState = System.Windows.Forms.FormWindowState.Maximized;
+            this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.form1_Closed);
             this.Load += new System.EventHandler(this.Form1_Load);
             this.Output.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.OutputTable)).EndInit();
             this.Actions.ResumeLayout(false);
             this.Options.ResumeLayout(false);
             this.ResumeLayout(false);
+            this.PerformLayout();
 
         }
 
@@ -213,6 +226,7 @@
         private System.Windows.Forms.DataGridViewTextBoxColumn Address;
         private System.Windows.Forms.DataGridViewTextBoxColumn ResponseCode;
         private System.Windows.Forms.DataGridViewTextBoxColumn Description;
+        private System.Windows.Forms.TextBox PercentageBox;
     }
 }
 

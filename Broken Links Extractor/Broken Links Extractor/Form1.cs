@@ -17,40 +17,36 @@ namespace Broken_Links_Extractor
 {
     public partial class Form1 : Form
     {
-        public static StreamWriter logFileCSV = null;
-        public static StreamWriter externalLinksSW = null;
         public Form1()
         {
             InitializeComponent();
-            fileList = new List<string>();
             for (int i = 0; i < max_threads; i++)
                 this.Speed.Items.Add(i + 1);
             for (int i = 0; i < max_depth; i++)
                 this.DepthSelector.Items.Add(i + 1);
         }
-        private string fileName = string.Empty;
-        private List<string> fileList = null;
+        private int classFileCounter = 0;
         private Queue<string> urlQueue = new Queue<string>();
-
+        private string inputFileName = string.Empty;
         private int threads = int.Parse(ConfigurationManager.AppSettings["Default_Number_Of_Threads"].ToString());
         private int depth = int.Parse(ConfigurationManager.AppSettings["Default_Depth"].ToString());
         private int max_depth = int.Parse(ConfigurationManager.AppSettings["Max_Depth"].ToString());
         private int max_threads = int.Parse(ConfigurationManager.AppSettings["Max_Number_Of_Threads"].ToString());
         static private object waitLock = new object();
         static public object outputLock = new object();
-        static private object ouputFileLock = new object();
-
+        private string countFilePath = string.Empty;
+        private int count = 1;
         static private object brokenLinksOutputLock = new object();
-        static public object externalLinksFileLock = new object();
+        private List<Thread> threadList = null;
         StreamWriter brokenLinksSW = null;
-
+        private int leeWay = int.Parse(ConfigurationManager.AppSettings["Leeway"].ToString());
         private bool allLinksProcessed = false;
         private void Form1_Load(object sender, EventArgs e)
         {
            
         }
 
-
+        private int queueCounter = 0;
         private void NewThreadMethod()
         {
             for (; ; )
@@ -67,6 +63,13 @@ namespace Broken_Links_Extractor
                 {
                     if (urlQueue.Count == 0) continue;
                     url = urlQueue.Dequeue();
+                    queueCounter++;
+                    if (queueCounter % leeWay == 0)
+                    {
+                        count += leeWay;
+                        WriteCount(count);
+                        this.PercentageBox.Text = "Completed: " + ((int)(((float)count) / classFileCounter)).ToString() + "%";
+                    }
                 }
                 Link linkObject = new Link(url);
                 string broken_links = linkObject.StartProcessing();
@@ -77,110 +80,116 @@ namespace Broken_Links_Extractor
                 }
             }
         }
+
+        private void WriteCount(int count)
+        {
+            StreamWriter countSW = new StreamWriter(countFilePath, false);
+            countSW.Write(count);
+            countSW.Close();
+        }
         private void StartButton_Click(object sender, EventArgs e)
         {
+            #region Actual Processing
+            
             try
             {
-                logFileCSV = new StreamWriter(Directory.GetCurrentDirectory() + "/logfile.csv", false);
                 brokenLinksSW = new StreamWriter(Directory.GetCurrentDirectory() + "/broken_links.csv", false);
                 this.OutputTable.Dock = DockStyle.Fill;
                 Link.OutputTable = this.OutputTable;
-                allLinksProcessed = false; // A flag which will make all the threads stop when the main thread ends
+                
                 Link.depth = this.depth;
                 Link.timeOut = int.Parse(ConfigurationManager.AppSettings["Timeout_In_Seconds"]) * 1000;
-                #region Spawn the child consumer threads
-                List<Thread> threadList = new List<Thread>();
-                //Spawn the threads
-                for (int i = 0; i < threads; i++)
+                
+                countFilePath = Directory.GetCurrentDirectory() + "/count.txt";
+                if (File.Exists(countFilePath)) // If count file exists, read it's value and ask the user whether he needs to start reading the file from current count?
                 {
-                    Thread thread = new Thread(NewThreadMethod);
-                    threadList.Add(thread);
-                    thread.IsBackground = true;
-                    thread.Start();
+                    StreamReader countSR = new StreamReader(countFilePath);
+                    while (!countSR.EndOfStream)
+                    {
+                        int.TryParse(countSR.ReadLine(),out count);
+                    }
+                    if (countSR != null)
+                    {
+                        countSR.Close();
+                        countSR = null;
+                    }
+                    DialogResult choice = MessageBox.Show("Do you want to start processing the input file from line number " + count + "?", "Skip already processed urls", MessageBoxButtons.YesNo);
+                    if (choice == DialogResult.No)
+                        count = 1;
                 }
-                #endregion
-                int counter_RunTimeFilesAdded = 0;
+                WriteCount(count);
+                FileInfo inputFileInfo = new FileInfo(inputFileName);
+                DateTime dt = inputFileInfo.LastWriteTime;
+                int fileCounter = 1;
                 while (true)
                 {
-                    int inputFileCountBefore = fileList.Count;
-
-                    HashSet<String> linkSet = new HashSet<string>();
-                    foreach (string file in fileList)
+                    allLinksProcessed = false; // A flag which will make all the threads stop when the main thread ends
+                    #region Spawn the child consumer threads
+                    threadList = new List<Thread>();
+                    //Spawn the threads
+                    for (int i = 0; i < threads; i++)
                     {
-                        StreamReader sr = null;
-                        try
+                        Thread thread = new Thread(NewThreadMethod);
+                        threadList.Add(thread);
+                        thread.IsBackground = true;
+                        thread.Start();
+                    }
+                    #endregion
+                    if (count >= leeWay)
+                        count -= leeWay;
+                    StreamReader sr = null;
+                    try
+                    {
+                        sr = new StreamReader(inputFileName);
+                        fileCounter = 1;
+                        lock (waitLock)
                         {
-                            sr = new StreamReader(file);
                             while (!sr.EndOfStream)
                             {
                                 string url = sr.ReadLine();
-                                Uri uri = null;
-                                Uri.TryCreate(url, UriKind.Absolute, out uri);
-                                if (uri == null)
-                                {
-                                    lock (outputLock)
-                                    {
-                                        this.OutputTable.Rows.Insert(0, string.Empty, string.Empty, "Invalid URL: " + url + " in file: " + file);
-                                        logFileCSV.WriteLine("\"\",\"\",\"" + "Invalid URL: " + url + " in file: " + file + "\"");
-                                        if (this.OutputTable.Rows.Count > 50)
-                                            this.OutputTable.Rows.RemoveAt(this.OutputTable.Rows.Count - 1);
-                                    }
-                                }
-                                else
-                                {
-                                    linkSet.Add(url);
-                                }
+                                if(fileCounter >= count)
+                                    urlQueue.Enqueue(url);
+                                fileCounter++;
                             }
                         }
-                        catch (Exception ex)
-                        {
-                            lock (outputLock)
-                            {
-                                this.OutputTable.Rows.Insert(0, string.Empty, string.Empty, "Error while opening one of the files: " + ex.Message);
-                                logFileCSV.WriteLine("\"\",\"\",\"" + "Error while opening one of the files: " + ex.Message + "\"");
-                                if (this.OutputTable.Rows.Count > 50)
-                                    this.OutputTable.Rows.RemoveAt(this.OutputTable.Rows.Count - 1);
-                            }
-                        }
-                        finally
-                        {
-                            if (sr != null)
-                                sr.Close();
-                        }
+                        classFileCounter = fileCounter;
                     }
-                    lock (waitLock)
+                    catch (Exception ex)
                     {
-                        foreach (string url in linkSet)
+                        lock (outputLock)
                         {
-                            urlQueue.Enqueue(url);
+                            this.OutputTable.Rows.Insert(0, string.Empty, string.Empty, "Error while opening one of the files: " + ex.Message);
+                            if (this.OutputTable.Rows.Count > 50)
+                                this.OutputTable.Rows.RemoveAt(this.OutputTable.Rows.Count - 1);
                         }
                     }
-
+                    finally
+                    {
+                        if (sr != null)
+                            sr.Close();
+                    }
                     while (urlQueue.Count > 0)
                     {
                         Application.DoEvents();
                     }
-                    #region Logic to terminate the main thread
-                    int inputFileCountAfter = fileList.Count;
-                    if (inputFileCountBefore == inputFileCountAfter) break;
-                    else
+
+                    allLinksProcessed = true;
+                    foreach (Thread t in threadList)
                     {
-                        for (int i = 0; i < inputFileCountBefore; i++)
-                        {
-                            fileList.RemoveAt(i);
-                        }
-                        counter_RunTimeFilesAdded++;
+                        t.Join();
                     }
+                    WriteCount(fileCounter);
+                    #region Logic to terminate the main thread
+                    if (dt != (new FileInfo(inputFileName)).LastWriteTime)//If more links have been added to the input file
+                    {
+                        dt = (new FileInfo(inputFileName)).LastWriteTime;
+                    }
+                    else break;
                     #endregion
 
                 }
-                
-                allLinksProcessed = true;
-                foreach (Thread t in threadList)
-                {
-                    t.Join();
-                }
-                MessageBox.Show("All internal links processed");
+                this.PercentageBox.Text = "Completed: 100%";
+                MessageBox.Show("All links processed");
             }
             catch (Exception ex)
             {
@@ -193,12 +202,9 @@ namespace Broken_Links_Extractor
                     brokenLinksSW.Close();
                     brokenLinksSW = null;
                 }
-                if (logFileCSV != null)
-                {
-                    logFileCSV.Close();
-                    logFileCSV = null;
-                }
             }
+            #endregion
+            
         }
 
       
@@ -207,7 +213,7 @@ namespace Broken_Links_Extractor
             DialogResult result = this.openFileDialog1.ShowDialog();
             if(result == DialogResult.OK)
             {
-                fileList.Add(this.openFileDialog1.FileName.ToString());
+                this.inputFileName = this.openFileDialog1.FileName.ToString();
             }
         }
 
@@ -239,6 +245,15 @@ namespace Broken_Links_Extractor
         private void OutputTable_CellContentClick(object sender, DataGridViewCellEventArgs e)
         {
 
+        }
+
+        private void form1_Closed(object sender, FormClosingEventArgs e)
+        {
+            if(threadList != null)
+                foreach (Thread t in threadList)
+                {
+                    t.Abort();
+                }
         }
     }
 }

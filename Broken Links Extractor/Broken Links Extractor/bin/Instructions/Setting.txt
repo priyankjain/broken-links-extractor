@@ -1,0 +1,6 @@
+
+Default depth is the value which is selected when you select nothing in the dropdown
+
+Timeout is the time in seconds which should be allowed for a webpage to load
+
+Default number of threads is the number of threads selected when nothing is selected in the speed dropdown

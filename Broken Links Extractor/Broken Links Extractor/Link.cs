@@ -13,50 +13,9 @@ namespace Broken_Links_Extractor
 {
     class Link
     {
-        private static object LogFileLock = new object();
         private static Regex linkParser = new Regex(@"\b(?:https?://|www\.)\S+\b", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         public static System.Windows.Forms.DataGridView OutputTable = null;
         private HashSet<string> externalList = null;
-        private static string Url_Cleanup(string url)
-        {
-            #region Url Clean Up
-            //Remove any query part
-            int index = url.IndexOf('?');
-            string temp = url.ToString();
-            if (index != -1)
-                temp = temp.Remove(index);
-
-            //Remove any leftover part starting with "
-            index = temp.IndexOf('"');
-            if (index != -1)
-                temp = temp.Remove(index);
-
-            //Remove any leftover part starting with #
-            index = temp.IndexOf('#');
-            if (index != -1)
-                temp = temp.Remove(index);
-
-            //Remove any leftover part starting with '
-            index = temp.IndexOf('\'');
-            if (index != -1)
-                temp = temp.Remove(index);
-
-            //Remove trailing slashes
-            if (temp[temp.Length - 1] == '/')
-                temp = temp.Substring(0, temp.Length - 1);
-
-            #endregion
-
-            return temp;
-        }
-
-        private static string Remove_Trailing_Slash(string url)
-        {
-            string temp = url;
-            if (temp[temp.Length - 1] == '/')
-                temp = temp.Substring(0, temp.Length - 1);
-            return temp;
-        }
         private string BaseUrl = string.Empty;
         Hashtable ChildUrls = null;
         public static int timeOut = 0;
@@ -130,6 +89,13 @@ namespace Broken_Links_Extractor
             HashSet<string> linkList = null;
             try
             {
+                Uri uri = null;
+                Uri.TryCreate(url, UriKind.Absolute, out uri);
+                if (uri == null)
+                {
+                    error_message = "Invalid Url: " + url;
+                    return null;
+                }
                 HttpWebRequest request = (HttpWebRequest)HttpWebRequest.Create(url);
                 request.Proxy = null;
                 request.Timeout = timeOut;
@@ -172,7 +138,7 @@ namespace Broken_Links_Extractor
                         if (Uri.Compare(muri, currentUri, UriComponents.Host, UriFormat.UriEscaped, StringComparison.CurrentCulture) == 0)
                         {
                             if (muri.ToString().Replace(@"http://", "").Replace(@"https://", "").Split('/').Length - 1 <= depth)
-                                linkList.Add(Url_Cleanup(muri.ToString()));
+                                linkList.Add(muri.ToString());
                         }
                         else
                         {
@@ -227,7 +193,6 @@ namespace Broken_Links_Extractor
             lock (Form1.outputLock)
             {
                 OutputTable.Rows.Insert(0, this.BaseUrl.ToString(), response_code, error_message);
-                Form1.logFileCSV.WriteLine("\"" + this.BaseUrl.ToString() + "\",\"" + response_code + "\",\"" + error_message + "\"");
                 if (OutputTable.Rows.Count > 50)
                     OutputTable.Rows.RemoveAt(OutputTable.Rows.Count - 1);
             }
@@ -249,7 +214,6 @@ namespace Broken_Links_Extractor
                 lock (Form1.outputLock)
                 {
                     OutputTable.Rows.Insert(0,this.ChildUrls[i].ToString(), response_code, error_message);
-                    Form1.logFileCSV.WriteLine("\"" + this.ChildUrls[i].ToString() + "\",\""+response_code+"\",\""+error_message+"\"");
                     if (OutputTable.Rows.Count > 50)
                         OutputTable.Rows.RemoveAt(OutputTable.Rows.Count - 1);
                 }
@@ -271,7 +235,6 @@ namespace Broken_Links_Extractor
                 lock (Form1.outputLock)
                 {
                     OutputTable.Rows.Insert(0, url, response_code, error_message);
-                    Form1.logFileCSV.WriteLine("\"" + url + "\",\"" + response_code + "\",\"" + error_message + "\"");
                     if (OutputTable.Rows.Count > 50)
                         OutputTable.Rows.RemoveAt(OutputTable.Rows.Count - 1);
                 }
