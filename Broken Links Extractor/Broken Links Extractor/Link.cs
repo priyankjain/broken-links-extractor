@@ -162,8 +162,9 @@ namespace Broken_Links_Extractor
 
                 if(ex.Response != null)
                 response_code = ((int)((HttpWebResponse)ex.Response).StatusCode).ToString();
-
-                if (error_message.Contains("The remote name could not be resolved:"))
+                if(error_message == null)
+                    error_message = string.Empty;
+                if (error_message!=string.Empty && error_message.Contains("The remote name could not be resolved:"))
                 {
                     response_code = "1000";
                 }
@@ -207,24 +208,34 @@ namespace Broken_Links_Extractor
             }
             for(int i=0;i<lastIndex;i++)
             {
-                currChilds = null;
-                error_message = string.Empty;
-                response_code = string.Empty;
-                currChilds = this.GetAllLinksOnUrl(this.ChildUrls[i].ToString(), out error_message, out response_code);
-                lock (Form1.outputLock)
+                try
                 {
-                    OutputTable.Rows.Insert(0,this.ChildUrls[i].ToString(), response_code, error_message);
-                    if (OutputTable.Rows.Count > 50)
-                        OutputTable.Rows.RemoveAt(OutputTable.Rows.Count - 1);
+                    currChilds = null;
+                    error_message = string.Empty;
+                    response_code = string.Empty;
+                    currChilds = this.GetAllLinksOnUrl(this.ChildUrls[i].ToString(), out error_message, out response_code);
+                    //if (this.ChildUrls.ContainsKey(i) && this.ChildUrls[i] != null)
+                    {
+                        lock (Form1.outputLock)
+                        {
+                            OutputTable.Rows.Insert(0, this.ChildUrls[i].ToString(), response_code, error_message);
+                            if (OutputTable.Rows.Count > 50)
+                                OutputTable.Rows.RemoveAt(OutputTable.Rows.Count - 1);
+                        }
+                        if (error_message != "OK")
+                        {
+                            broken_list += "\"" + this.ChildUrls[i].ToString() + "\",\"" + response_code + "\",\"" + error_message + "\"" + Environment.NewLine;
+                        }
+                        if (error_message == "OK" && currChilds != null)
+                            foreach (string url in currChilds)
+                            {
+                                this.AddChildLink(url);
+                            }
+                    }
                 }
-                if (error_message != "OK")
+                catch (Exception ex)
                 {
-                    broken_list += "\"" + this.ChildUrls[i].ToString() + "\",\"" + response_code + "\",\"" + error_message + "\"" + Environment.NewLine;
-                }
-                if (error_message == "OK" && currChilds != null)
-                foreach (string url in currChilds)
-                {
-                    this.AddChildLink(url);
+                    broken_list += "\"" + string.Empty + "\",\"" + ex.Message + "\",\"" + ex.StackTrace + "\"" + Environment.NewLine;
                 }
             }
             foreach (string url in this.externalList)
@@ -246,7 +257,6 @@ namespace Broken_Links_Extractor
             ChildUrls.Clear();
             externalList.Clear();
             GC.Collect();
-            
             return broken_list;
         }
     }

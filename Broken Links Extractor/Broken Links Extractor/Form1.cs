@@ -68,7 +68,7 @@ namespace Broken_Links_Extractor
                     {
                         count += leeWay;
                         WriteCount(count);
-                        this.PercentageBox.Text = "Completed: " + ((int)(((float)count) / classFileCounter)).ToString() + "%";
+                        this.PercentageBox.Text = "Completed: " + Math.Round((((float)count)*100.0f / classFileCounter),2).ToString() + "%";
                     }
                 }
                 Link linkObject = new Link(url);
@@ -93,7 +93,7 @@ namespace Broken_Links_Extractor
             
             try
             {
-                brokenLinksSW = new StreamWriter(Directory.GetCurrentDirectory() + "/broken_links.csv", false);
+                brokenLinksSW = new StreamWriter(Directory.GetCurrentDirectory() + "/broken_links.csv", true);
                 this.OutputTable.Dock = DockStyle.Fill;
                 Link.OutputTable = this.OutputTable;
                 
