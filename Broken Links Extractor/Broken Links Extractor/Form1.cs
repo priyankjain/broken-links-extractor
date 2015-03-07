@@ -36,7 +36,7 @@ namespace Broken_Links_Extractor
         static public object outputLock = new object();
         private string countFilePath = string.Empty;
         private int count = 1;
-        static private object brokenLinksOutputLock = new object();
+        static public object brokenLinksOutputLock = new object();
         private List<Thread> threadList = null;
         StreamWriter brokenLinksSW = null;
         private int leeWay = int.Parse(ConfigurationManager.AppSettings["Leeway"].ToString());
@@ -72,12 +72,11 @@ namespace Broken_Links_Extractor
                     }
                 }
                 Link linkObject = new Link(url);
-                string broken_links = linkObject.StartProcessing();
-                lock (brokenLinksOutputLock)
-                {
-                    brokenLinksSW.Write(broken_links);
-                    brokenLinksSW.Flush();
-                }
+                linkObject.StartProcessing();
+                //lock (brokenLinksOutputLock)
+                //{
+                //    brokenLinksSW.Write(broken_links);
+                //}
             }
         }
 
@@ -96,7 +95,7 @@ namespace Broken_Links_Extractor
                 brokenLinksSW = new StreamWriter(Directory.GetCurrentDirectory() + "/broken_links.csv", true);
                 this.OutputTable.Dock = DockStyle.Fill;
                 Link.OutputTable = this.OutputTable;
-                
+                Link.brokenLinksSW = this.brokenLinksSW;
                 Link.depth = this.depth;
                 Link.timeOut = int.Parse(ConfigurationManager.AppSettings["Timeout_In_Seconds"]) * 1000;
                 

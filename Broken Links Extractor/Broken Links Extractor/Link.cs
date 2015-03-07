@@ -13,6 +13,7 @@ namespace Broken_Links_Extractor
 {
     class Link
     {
+        public static StreamWriter brokenLinksSW = null;
         private static Regex linkParser = new Regex(@"\b(?:https?://|www\.)\S+\b", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         public static System.Windows.Forms.DataGridView OutputTable = null;
         private HashSet<string> externalList = null;
@@ -183,81 +184,112 @@ namespace Broken_Links_Extractor
             }
             return linkList;
         }
-        public string StartProcessing()
+        public void StartProcessing()
         {
-            string broken_list = string.Empty;
-            //For each link, process the current link by calling GetAllLinksOnUrl
-            HashSet<string> currChilds = null;
-            string error_message = string.Empty;
-            string response_code = string.Empty;
-            currChilds = this.GetAllLinksOnUrl(this.BaseUrl,out error_message, out response_code);
-            lock (Form1.outputLock)
+            try
             {
-                OutputTable.Rows.Insert(0, this.BaseUrl.ToString(), response_code, error_message);
-                if (OutputTable.Rows.Count > 50)
-                    OutputTable.Rows.RemoveAt(OutputTable.Rows.Count - 1);
-            }
-            if (error_message != "OK")
-            {
-                broken_list += "\"" + BaseUrl + "\",\"" + response_code + "\",\"" + error_message + "\"" + Environment.NewLine;
-            }
-            if(error_message == "OK" && currChilds != null)
-            foreach (string url in currChilds)
-            {
-                this.AddChildLink(url);
-            }
-            for(int i=0;i<lastIndex;i++)
-            {
-                try
-                {
-                    currChilds = null;
-                    error_message = string.Empty;
-                    response_code = string.Empty;
-                    currChilds = this.GetAllLinksOnUrl(this.ChildUrls[i].ToString(), out error_message, out response_code);
-                    //if (this.ChildUrls.ContainsKey(i) && this.ChildUrls[i] != null)
-                    {
-                        lock (Form1.outputLock)
-                        {
-                            OutputTable.Rows.Insert(0, this.ChildUrls[i].ToString(), response_code, error_message);
-                            if (OutputTable.Rows.Count > 50)
-                                OutputTable.Rows.RemoveAt(OutputTable.Rows.Count - 1);
-                        }
-                        if (error_message != "OK")
-                        {
-                            broken_list += "\"" + this.ChildUrls[i].ToString() + "\",\"" + response_code + "\",\"" + error_message + "\"" + Environment.NewLine;
-                        }
-                        if (error_message == "OK" && currChilds != null)
-                            foreach (string url in currChilds)
-                            {
-                                this.AddChildLink(url);
-                            }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    broken_list += "\"" + string.Empty + "\",\"" + ex.Message + "\",\"" + ex.StackTrace + "\"" + Environment.NewLine;
-                }
-            }
-            foreach (string url in this.externalList)
-            {
-                error_message = string.Empty;
-                response_code = string.Empty;
-                this.GetStatusOnly(url, out error_message, out response_code);
+                //For each link, process the current link by calling GetAllLinksOnUrl
+                HashSet<string> currChilds = null;
+                string error_message = string.Empty;
+                string response_code = string.Empty;
+                currChilds = this.GetAllLinksOnUrl(this.BaseUrl,out error_message, out response_code);
                 lock (Form1.outputLock)
                 {
-                    OutputTable.Rows.Insert(0, url, response_code, error_message);
+                    OutputTable.Rows.Insert(0, this.BaseUrl.ToString(), response_code, error_message);
                     if (OutputTable.Rows.Count > 50)
                         OutputTable.Rows.RemoveAt(OutputTable.Rows.Count - 1);
                 }
                 if (error_message != "OK")
                 {
-                    broken_list += "\"" + url + "\",\"" + response_code + "\",\"" + error_message + "\"" + Environment.NewLine;
+                    lock(Form1.brokenLinksOutputLock)
+                    {
+                        brokenLinksSW.Write("\"" + BaseUrl + "\",\"" + response_code + "\",\"" + error_message + "\"" + Environment.NewLine);
+                    }
                 }
-            }   
-            ChildUrls.Clear();
-            externalList.Clear();
-            GC.Collect();
-            return broken_list;
+                if(error_message == "OK" && currChilds != null)
+                foreach (string url in currChilds)
+                {
+                    this.AddChildLink(url);
+                }
+                for(int i=0;i<lastIndex;i++)
+                {
+                    try
+                    {
+                        currChilds = null;
+                        error_message = string.Empty;
+                        response_code = string.Empty;
+                        currChilds = this.GetAllLinksOnUrl(this.ChildUrls[i].ToString(), out error_message, out response_code);
+                        //if (this.ChildUrls.ContainsKey(i) && this.ChildUrls[i] != null)
+                        {
+                            lock (Form1.outputLock)
+                            {
+                                OutputTable.Rows.Insert(0, this.ChildUrls[i].ToString(), response_code, error_message);
+                                if (OutputTable.Rows.Count > 50)
+                                    OutputTable.Rows.RemoveAt(OutputTable.Rows.Count - 1);
+                            }
+                            if (error_message != "OK")
+                            {
+                                lock (Form1.brokenLinksOutputLock)
+                                {
+                                    brokenLinksSW.Write("\"" + this.ChildUrls[i].ToString() + "\",\"" + response_code + "\",\"" + error_message + "\"" + Environment.NewLine);
+                                }
+                            }
+                            if (error_message == "OK" && currChilds != null)
+                                foreach (string url in currChilds)
+                                {
+                                    this.AddChildLink(url);
+                                }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        lock (Form1.brokenLinksOutputLock)
+                        {
+                            brokenLinksSW.Write("\"" + string.Empty + "\",\"" + ex.Message + "\",\"" + ex.StackTrace + "\"" + Environment.NewLine);
+                        }
+                    }
+                }
+                foreach (string url in this.externalList)
+                {
+                    try
+                    {
+                        error_message = string.Empty;
+                        response_code = string.Empty;
+                        this.GetStatusOnly(url, out error_message, out response_code);
+                        lock (Form1.outputLock)
+                        {
+                            OutputTable.Rows.Insert(0, url, response_code, error_message);
+                            if (OutputTable.Rows.Count > 50)
+                                OutputTable.Rows.RemoveAt(OutputTable.Rows.Count - 1);
+                        }
+                        if (error_message != "OK")
+                        {
+                            lock (Form1.brokenLinksOutputLock)
+                            {
+                                brokenLinksSW.Write("\"" + url + "\",\"" + response_code + "\",\"" + error_message + "\"" + Environment.NewLine);
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        lock (Form1.brokenLinksOutputLock)
+                        {
+                            brokenLinksSW.Write("\"" + string.Empty + "\",\"" + ex.Message + "\",\"" + ex.StackTrace + "\"" + Environment.NewLine);
+                        }
+                    }
+                }   
+                ChildUrls.Clear();
+                externalList.Clear();
+                GC.Collect();
+            }
+            catch (Exception ex)
+            {
+                lock (Form1.brokenLinksOutputLock)
+                {
+                    brokenLinksSW.Write("\"" + string.Empty + "\",\"" + ex.Message + "\",\"" + ex.StackTrace + "\"" + Environment.NewLine);
+                }
+            }
+            return;
         }
     }
 }
